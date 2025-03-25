@@ -2,10 +2,11 @@ from sqlalchemy import Column, String, text
 from sqlalchemy.dialects.postgresql import UUID, BYTEA
 
 from api.database import Base
+from api.repository import IModel
 from api.user.schemas import SUser
 
 
-class User(Base):
+class User(Base, IModel):
     __tablename__ = "users"
 
     id = Column(

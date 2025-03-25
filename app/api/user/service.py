@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.repository import AbstractRepository
+from api.repository import IRepository
 from api.user.exceptions import EUserNotFound, EUsernameExists
 from api.user.models import User
 from api.user.schemas import SUserCreate, SUser
@@ -11,7 +11,7 @@ from api.user.utils import encrypt_password
 
 
 class UserService:
-    def __init__(self, user_repository: Type[AbstractRepository]):
+    def __init__(self, user_repository: Type[IRepository]):
         self.user_repository = user_repository()
 
     async def create_user(

@@ -5,51 +5,81 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.schemas import BaseSchema
 
+from uuid import UUID
 
-class AbstractRepository(ABC):
-    @abstractmethod
-    async def create_one(self, session: AsyncSession, data: dict):
-        raise NotImplementedError
 
-    @abstractmethod
-    async def get_first(self, session: AsyncSession, filters: list = None):
-        raise NotImplementedError
+class IModel(ABC):
+    id: UUID | str | int
 
     @abstractmethod
-    async def get_all(self, session: AsyncSession, filters: list = None):
+    def to_schema(self) -> BaseSchema:
         raise NotImplementedError
 
 
-class SQLAlchemyRepository(AbstractRepository):
-    model = None
+class IRepository(ABC):
+    model: IModel
 
+    @classmethod
+    @abstractmethod
+    async def create_one(cls, session: AsyncSession, data: dict):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    async def get_by_id(cls, session: AsyncSession, _id: int | str | UUID):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    async def get_first(cls, session: AsyncSession, filters: list = None):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    async def get_all(cls, session: AsyncSession, filters: list = None):
+        raise NotImplementedError
+
+
+class SQLAlchemyRepository(IRepository):
+    model: IModel = None
+
+    @classmethod
     async def create_one(
-            self,
+            cls,
             session: AsyncSession,
             data: dict
     ) -> BaseSchema:
-        query = insert(self.model).values(**data).returning(self.model)
+        query = insert(cls.model).values(**data).returning(cls.model)
         result = await session.execute(query)
         await session.commit()
         return result.scalars().one().to_schema()
 
+    @classmethod
+    async def get_by_id(cls, session: AsyncSession, _id: int | str | UUID):
+        query = select(cls.model).where(cls.model.id == _id)
+        result = await session.execute(query)
+        row = result.scalars().first()
+        return row.to_schema() if row else None
+
+    @classmethod
     async def get_first(
-            self,
+            cls,
             session: AsyncSession,
             filters: list = None
     ) -> BaseSchema | None:
-        query = select(self.model)
+        query = select(cls.model)
         if filters:
             query = query.where(and_(*filters))
         result = await session.execute(query)
         row = result.scalars().first()
         return row.to_schema() if row else None
 
+    @classmethod
     async def get_all(
-            self, session: AsyncSession,
+            cls, session: AsyncSession,
             filters: list = None
     ) -> list[BaseSchema]:
-        query = select(self.model)
+        query = select(cls.model)
         if filters:
             query = query.where(and_(*filters))
         result = await session.execute(query)
